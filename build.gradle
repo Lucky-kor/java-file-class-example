@@ -1,0 +1,70 @@
+plugins {
+    id 'java'
+}
+
+group = 'com.codeit'
+version = '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.10.0')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+}
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
+
+// 예: ./gradlew runExample -Pexample=textstreams.Utf8TextExample
+tasks.register('runExample', JavaExec) {
+    group = 'application'
+    description = 'Run one learning example with -Pexample=package.ClassName'
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = providers.gradleProperty('example').orElse('paths.FilePathExample')
+    workingDir = projectDir
+}
+
+def learningExamples = [
+    'paths.FilePathExample',
+    'bytestreams.ByteReadExample',
+    'bytestreams.ByteWriteExample',
+    'bytestreams.BufferedCopyExample',
+    'textstreams.Utf8TextExample',
+    'collectiontext.CollectionRoundTripExample',
+    'fileoperations.FilesOperationsExample',
+    'ioerrors.ExpectedFailuresExample'
+]
+
+tasks.register('runAllExamples') {
+    group = 'application'
+    description = 'Run all learning examples'
+}
+learningExamples.eachWithIndex { exampleName, index ->
+    def exampleTask = tasks.register("learningExample${index + 1}", JavaExec) {
+        classpath = sourceSets.main.runtimeClasspath
+        mainClass = exampleName
+        workingDir = projectDir
+        if (index > 0) {
+            mustRunAfter "learningExample${index}"
+        }
+    }
+    tasks.named('runAllExamples') { dependsOn exampleTask }
+}
+
+// 시스템 로케일과 관계없이 학습 예제의 한글 콘솔 출력을 유지합니다.
+tasks.withType(JavaExec).configureEach {
+    systemProperty 'stdout.encoding', 'UTF-8'
+    systemProperty 'stderr.encoding', 'UTF-8'
+}
